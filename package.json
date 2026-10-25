@@ -1,0 +1,11 @@
+{
+  "name": "charriffle",
+  "version": "1.0.0",
+  "description": "Offline, local-first character name ledger for fiction writers. Pure HTML/JS/CSS, zero dependencies.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/"
+  },
+  "license": "MIT",
+  "private": true
+}

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CharRiffle — cast name ledger for fiction writers</title>
+<meta name="description" content="Offline, local-first character name inventory with clash warnings, alias mapping, family sketch, and placeholder-name riffles.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23a8542c'/><text x='16' y='23' font-family='Georgia,serif' font-size='20' fill='white' text-anchor='middle'>R</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">
+    <h1>CharRiffle</h1>
+    <p>A local-first ledger for herding a growing cast</p>
+  </div>
+  <div class="header-actions">
+    <button type="button" id="btn-export" class="btn">Export JSON</button>
+    <button type="button" id="btn-import" class="btn">Import JSON</button>
+    <input type="file" id="import-file" accept="application/json,.json" hidden>
+    <button type="button" id="btn-clear-all" class="btn danger">Clear all data</button>
+  </div>
+</header>
+
+<div id="storage-warning" class="banner" hidden>
+  This browser blocked local storage here, so nothing will be saved between visits.
+  Open the app from a normal browser window (or serve it with <code>npm start</code>) to keep your cast.
+</div>
+
+<nav id="tabs" aria-label="Sections">
+  <button type="button" data-tab="inventory" class="tab-button active">Inventory</button>
+  <button type="button" data-tab="clashes" class="tab-button">Clashes <span id="clashes-count" class="tab-badge">0</span></button>
+  <button type="button" data-tab="aliases" class="tab-button">Aliases</button>
+  <button type="button" data-tab="family" class="tab-button">Family</button>
+  <button type="button" data-tab="riffle" class="tab-button">Riffle</button>
+</nav>
+
+<main>
+  <section class="tab-section" data-tab="inventory" id="section-inventory">
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Search name, role, note, alias…" aria-label="Search characters">
+      <button type="button" id="btn-add" class="btn primary">Add character</button>
+    </div>
+
+    <div id="editor" class="card editor" hidden>
+      <h2 id="editor-title">Add character</h2>
+      <form id="character-form">
+        <div class="grid two">
+          <label class="field">First name <input id="f-first" autocomplete="off"></label>
+          <label class="field">Last name <input id="f-last" autocomplete="off"></label>
+          <label class="field">Role
+            <select id="f-role">
+              <option>Protagonist</option>
+              <option>Antagonist</option>
+              <option>Deuteragonist</option>
+              <option>Supporting</option>
+              <option>Mentor</option>
+              <option>Love interest</option>
+              <option>Foil</option>
+              <option>Minor</option>
+              <option>Cameo</option>
+              <option>Placeholder</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label class="field">First appearance <input id="f-first-app" placeholder="e.g. Ch. 3 — quay scene"></label>
+          <label class="field">Last appearance <input id="f-last-app" placeholder="e.g. Ch. 19 — epilogue"></label>
+        </div>
+        <label class="field">Story notes <textarea id="f-notes" rows="2" placeholder="Voice, wound, tells, what they want…"></textarea></label>
+        <fieldset class="field">
+          <legend>Nicknames and aliases</legend>
+          <div id="alias-chips" class="chips"></div>
+          <div class="row">
+            <input id="f-alias" placeholder="Add a nickname or alias" autocomplete="off">
+            <button type="button" id="btn-add-alias" class="btn">Add</button>
+          </div>
+        </fieldset>
+        <div class="row actions">
+          <button type="submit" class="btn primary">Save character</button>
+          <button type="button" id="btn-cancel" class="btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="character-list" class="card-list"></div>
+  </section>
+
+  <section class="tab-section" data-tab="clashes" id="section-clashes" hidden>
+    <div class="tab-intro">
+      <p>Names that are easy to blur together. <strong>High</strong> = fix before readers meet the cast.
+      <strong>Medium</strong> = worth a glance. <strong>Low</strong> = informational (shared surnames and sound-alikes are sometimes deliberate).</p>
+    </div>
+    <div id="clashes-list" class="card-list"></div>
+  </section>
+
+  <section class="tab-section" data-tab="aliases" id="section-aliases" hidden>
+    <div class="tab-intro">
+      <p>Every nickname or alias mapped to the formal name it stands for. Rows marked <span class="badge sev sev-high">shared</span> are used by more than one character.</p>
+    </div>
+    <div id="aliases-list"></div>
+  </section>
+
+  <section class="tab-section" data-tab="family" id="section-family" hidden>
+    <div class="grid family">
+      <div class="card">
+        <h2>Relations</h2>
+        <div id="family-empty">
+          <p class="empty-text">Add characters in the Inventory tab first, then sketch their family ties here.</p>
+        </div>
+        <div id="family-tools" hidden>
+          <div class="row">
+            <label class="field grow">Focus character <select id="family-char"></select></label>
+          </div>
+          <div class="row">
+            <label class="field grow">Relates to <select id="rel-target"></select></label>
+            <label class="field grow">As <select id="rel-label">
+              <option>Parent</option>
+              <option>Child</option>
+              <option>Sibling</option>
+              <option>Half-sibling</option>
+              <option>Step-sibling</option>
+              <option>Spouse</option>
+              <option>Partner</option>
+              <option>Ex-partner</option>
+              <option>Cousin</option>
+              <option>Aunt/Uncle</option>
+              <option>Niece/Nephew</option>
+              <option>Grandparent</option>
+              <option>Grandchild</option>
+              <option>In-law</option>
+              <option>Guardian</option>
+              <option>Mentor</option>
+              <option>Rival</option>
+              <option>Roommate</option>
+              <option>Related</option>
+            </select></label>
+          </div>
+          <div class="row">
+            <label class="field grow">…or a custom label <input id="rel-custom" placeholder="e.g. sworn shield" autocomplete="off"></label>
+            <button type="button" id="btn-add-relation" class="btn primary">Add relation</button>
+          </div>
+          <div id="rel-list" class="rel-list"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Sketch</h2>
+        <div id="family-sketch"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-section" data-tab="riffle" id="section-riffle" hidden>
+    <div class="tab-intro">
+      <p>Placeholder names for drafting. Spin up a batch, pin the keepers, reriffle the rest, then promote the winners to the cast.</p>
+    </div>
+    <div class="toolbar riffle-controls">
+      <label class="field">Style
+        <select id="riffle-style">
+          <option value="classic">Classic (real-ish)</option>
+          <option value="fantasy">Fantasy riff</option>
+        </select>
+      </label>
+      <label class="field">Starts with
+        <select id="riffle-letter">
+          <option value="">Any</option>
+          <option>A</option><option>B</option><option>C</option><option>D</option><option>E</option>
+          <option>F</option><option>G</option><option>H</option><option>I</option><option>J</option>
+          <option>K</option><option>L</option><option>M</option><option>N</option><option>O</option>
+          <option>P</option><option>Q</option><option>R</option><option>S</option><option>T</option>
+          <option>U</option><option>V</option><option>W</option><option>X</option><option>Y</option>
+          <option>Z</option>
+        </select>
+      </label>
+      <label class="field">Batch size <input type="number" id="riffle-count" min="1" max="16" value="6"></label>
+      <button type="button" id="btn-riffle" class="btn primary">Riffle</button>
+      <button type="button" id="btn-clear-slots" class="btn">Clear batch</button>
+    </div>
+    <div id="slot-list" class="card-list"></div>
+    <div class="row actions">
+      <button type="button" id="btn-add-all" class="btn" disabled>Add all non-pinned to cast</button>
+    </div>
+  </section>
+</main>
+
+<footer class="app-footer">
+  <p>Saved in this browser only — export JSON before switching devices. No accounts, no network calls, no secrets.
+  An offline tool by <strong>Asdale Dynamics, LLC</strong>.</p>
+</footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
